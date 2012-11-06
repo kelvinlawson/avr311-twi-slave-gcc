@@ -32,9 +32,15 @@
  * * (MISRA C rule 61) every non-empty case clause in a switch statement shall be terminated with a break statement
 */
 
-#include <ioavr.h>
-#include <inavr.h>
-#include "TWI_Slave.h"
+#if defined(__ICCAVR__)
+#include "ioavr.h"              
+#include "inavr.h"
+#else
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/sleep.h>
+#endif
+#include "TWI_slave.h"
 
 // Sample TWI transmission commands
 #define TWI_CMD_MASTER_WRITE 0x10
@@ -47,11 +53,27 @@
 // for TWI receives and transmits to finish.
 #define POWER_MANAGEMENT_ENABLED
 
+// Compiler-independent macros (was previously IAR intrinsics)
+#if defined(__ICCAVR__)
+#define SEI()     __enable_interrupt()
+#define SLEEP()   __sleep()
+#define NOP()     __no_operation()
+#else
+#define SEI()     sei()
+#define SLEEP()   sleep_cpu()
+#define NOP()     __asm__ __volatile__ ("nop" ::)
+#endif
+
 // When there has been an error, this function is run and takes care of it
 unsigned char TWI_Act_On_Failure_In_Last_Transmission ( unsigned char TWIerrorMsg );
 
 
-void main( void )
+#if defined(__ICCAVR__)
+void
+#else
+int
+#endif
+main( void )
 {
   unsigned char messageBuf[TWI_BUFFER_SIZE];
   unsigned char TWI_slaveAddress;
@@ -66,7 +88,7 @@ void main( void )
   // Initialise TWI module for slave operation. Include address and/or enable General Call.
   TWI_Slave_Initialise( (unsigned char)((TWI_slaveAddress<<TWI_ADR_BITS) | (TRUE<<TWI_GEN_BIT) )); 
                        
-  __enable_interrupt();
+  SEI();
 
   // Start the TWI transceiver to enable reseption of the first command from the TWI Master.
   TWI_Start_Transceiver();
@@ -93,13 +115,13 @@ void main( void )
         } else {
           MCUCR = (1<<SE)|(0<<SM2)|(1<<SM1)|(0<<SM0); // Enable sleep with power-down mode
         }
-        __sleep();
+        SLEEP();
       } else {
-        __no_operation(); // There is data in the buffer, code below takes care of it.
+        NOP(); // There is data in the buffer, code below takes care of it.
       }
     #else // No power management
       // Here you can add your own code that should be run while waiting for the TWI to finish    
-      __no_operation(); // Put own code here.
+      NOP(); // Put own code here.
     #endif
       
     
@@ -138,7 +160,7 @@ void main( void )
         }                
         else // Ends up here if the last operation was a transmission  
         {
-            __no_operation(); // Put own code here.
+            NOP(); // Put own code here.
         }
         // Check if the TWI Transceiver has already been started.
         // If not then restart it to prepare it for new receptions.             

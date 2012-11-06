@@ -57,7 +57,6 @@ union TWI_statusReg_t                       // Status byte holding flags.
 
 extern union TWI_statusReg_t TWI_statusReg;
 
-static unsigned char dont_sleep = 0;
 
 /****************************************************************************
   Function definitions
@@ -68,9 +67,6 @@ unsigned char TWI_Get_State_Info( void );
 void TWI_Start_Transceiver_With_Data( unsigned char * , unsigned char );
 void TWI_Start_Transceiver( void );
 unsigned char TWI_Get_Data_From_Transceiver( unsigned char *, unsigned char );
-
-#pragma vector=TWI_vect
-__interrupt void TWI_ISR( void );
 
 /****************************************************************************
   Bit and byte definitions

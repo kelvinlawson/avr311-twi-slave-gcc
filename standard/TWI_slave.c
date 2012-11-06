@@ -34,10 +34,21 @@
  * * (MISRA C rule 61) every non-empty case clause in a switch statement shall be terminated with a break statement
 */
 
+#if defined(__ICCAVR__)
 #include "ioavr.h"              
 #include "inavr.h"
+#else
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#endif
 #include "TWI_slave.h"
- 
+
+// Emulate GCC ISR() statement in IAR
+#if defined(__ICCAVR__)
+#define PRAGMA(x) _Pragma( #x )
+#define ISR(vec) PRAGMA( vector=vec ) __interrupt void handler_##vec(void)
+#endif 
+
 static unsigned char TWI_buf[TWI_BUFFER_SIZE];     // Transceiver buffer. Set the size in the header file
 static unsigned char TWI_msgSize  = 0;             // Number of bytes to be transmitted.
 static unsigned char TWI_state    = TWI_NO_STATE;  // State byte. Default set to TWI_NO_STATE.
@@ -45,7 +56,7 @@ static unsigned char TWI_state    = TWI_NO_STATE;  // State byte. Default set to
 // This is true when the TWI is in the middle of a transfer
 // and set to false when all bytes have been transmitted/received
 // Also used to determine how deep we can sleep.
-static unsigned char TWI_busy = 0;
+static volatile unsigned char TWI_busy = 0;
 
 union TWI_statusReg_t TWI_statusReg = {0};           // TWI_statusReg is defined in TWI_Slave.h
 
@@ -164,8 +175,7 @@ This function is the Interrupt Service Routine (ISR), and called when the TWI in
 that is whenever a TWI event has occurred. This function should not be called directly from the main
 application.
 ****************************************************************************/
-#pragma vector=TWI_vect
-__interrupt void TWI_ISR( void )
+ISR(TWI_vect)
 {
   static unsigned char TWI_bufPtr;
   
